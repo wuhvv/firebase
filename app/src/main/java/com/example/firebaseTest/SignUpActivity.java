@@ -1,5 +1,7 @@
 package com.example.firebaseTest;
 
+import android.app.ProgressDialog;
+import android.content.Intent;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -14,12 +16,15 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
+import com.google.firebase.firestore.FirebaseFirestore;
 
 
 public class SignUpActivity extends AppCompatActivity {
 
     private static final String TAG = "SignUpActivity";
     private FirebaseAuth mAuth;
+    FirebaseFirestore db;
+    ProgressDialog progressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +33,10 @@ public class SignUpActivity extends AppCompatActivity {
 
         // Initialize Firebase Auth
         mAuth = FirebaseAuth.getInstance();
+        // Init firestore
+        db = FirebaseFirestore.getInstance();
 
+        progressDialog = new ProgressDialog(this);
         findViewById(R.id.signUpButton).setOnClickListener(onClickListener);
     }
 
@@ -56,30 +64,59 @@ public class SignUpActivity extends AppCompatActivity {
         String password = ((EditText) findViewById(R.id.editTextTextPassword)).getText().toString();
         String passwordCheck = ((EditText) findViewById(R.id.editTextTextPassword2)).getText().toString();
 
-        if(email.length() > 0 && password.length() > 0 && passwordCheck.length() > 0){
-            if(password.equals(passwordCheck)){
-                mAuth.createUserWithEmailAndPassword(email, password)
-                        .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                            @Override
-                            public void onComplete(@NonNull Task<AuthResult> task) {
-                                if (task.isSuccessful()) {
-                                    // 성공 할 경우
-                                    // Log.d(TAG, "createUserWithEmail:success");
-                                    Toast.makeText(SignUpActivity.this, "회원가입이 성공했습니다", Toast.LENGTH_SHORT).show();
-                                    FirebaseUser user = mAuth.getCurrentUser();
-                                } else {
-                                    // 실패할 경우
-                                    Log.w(TAG, "createUserWithEmail:failure", task.getException());
-                                    Toast.makeText(SignUpActivity.this, task.getException().toString(), Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                        });
-            }else{
-                Toast.makeText(this, "비밀번호 틀림", Toast.LENGTH_SHORT).show();
-            }
-        }else{
-            Toast.makeText(this, "이메일과 패스와드를 입력해주.", Toast.LENGTH_SHORT).show();
+        Boolean submitFlag = true;
+
+        if(email.isEmpty()){
+            Toast.makeText(SignUpActivity.this, "이메일을 입력해주세요", Toast.LENGTH_SHORT).show();
+            submitFlag = false;
         }
+        if(password.isEmpty()){
+            Toast.makeText(SignUpActivity.this, "비밀번호를 입력해주세요", Toast.LENGTH_SHORT).show();
+            submitFlag = false;
+        }
+        if(passwordCheck.isEmpty()){
+            Toast.makeText(SignUpActivity.this, "확인 비밀번호를 입력해주세요", Toast.LENGTH_SHORT).show();
+            submitFlag = false;
+        }
+        if(password.length() < 6){
+            Toast.makeText(SignUpActivity.this, "비밀번호를 6자리 이상 입력해주세요", Toast.LENGTH_SHORT).show();
+            submitFlag = false;
+        }
+        if(!password.equals(passwordCheck)){
+            Toast.makeText(SignUpActivity.this, "비밀번호가 서로 다릅니다.", Toast.LENGTH_SHORT).show();
+            submitFlag = false;
+        }
+
+        if(submitFlag){
+
+            progressDialog.setMessage("등록즁입니다. 기다려 주세요...");
+            progressDialog.show();
+
+            mAuth.createUserWithEmailAndPassword(email, password)
+                    .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
+                        @Override
+                        public void onComplete(@NonNull Task<AuthResult> task) {
+                            if (task.isSuccessful()) {
+                                // 성공 할 경우
+                                Toast.makeText(SignUpActivity.this, "회원가입이 성공했습니다", Toast.LENGTH_SHORT).show();
+//                                FirebaseUser user = mAuth.getCurrentUser();
+//                                Member m = new Member("회원1", "www.naver.com", 1, 500);
+//                                db.collection("members").document(user.getUid()).set(m);
+
+                                // 회원가입시 메인 액티비티로 이동
+                                Intent intent = new Intent(getApplicationContext(), MainActivity.class);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+                                startActivity(intent);
+                            } else {
+                                // 실패할 경우
+                                Log.w(TAG, "createUserWithEmail:failure", task.getException());
+                                Toast.makeText(SignUpActivity.this, task.getException().toString(), Toast.LENGTH_SHORT).show();
+                            }
+                            progressDialog.dismiss();
+                        }
+                    });
+        }
+
 
     }
 
